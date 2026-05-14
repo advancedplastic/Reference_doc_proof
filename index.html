@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proof Navigator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --off: #f7f7f5;
+    --border: #e0e0de;
+    --border-dark: #b8b8b4;
+    --ink: #0a0a0a;
+    --ink-2: #2e2e2c;
+    --ink-3: #5e5e5c;
+    --ink-4: #9a9a96;
+    --yellow: #f5e532;
+    --yellow-dim: rgba(245,229,50,0.28);
+    --p-color: #9a3800;
+    --p-bg: #fff2e8;
+    --p-border: #f0c090;
+    --q-color: #0043ce;
+    --q-bg: #edf4ff;
+    --q-border: #a0c0f0;
+    --green: #198038;
+    --green-soft: #defbe6;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--mono); font-size: 14px; line-height: 1.6; font-weight: 300; min-height: 100vh; }
+
+  /* NAV */
+  nav { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--border); z-index: 100; }
+  .nav-inner { max-width: 1080px; margin: 0 auto; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 48px; }
+  .nav-logo { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); text-decoration: none; }
+  nav ul { display: flex; gap: 24px; list-style: none; }
+  nav a.nav-link { text-decoration: none; color: var(--ink-3); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; transition: color 0.15s; }
+  nav a.nav-link:hover { color: var(--ink); }
+
+  /* HERO */
+  .hero { max-width: 1080px; margin: 0 auto; padding: 72px 32px 56px; border-bottom: 1px solid var(--border); }
+  .hero-label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 20px; }
+  .hero h1 { font-size: clamp(26px, 3.5vw, 44px); font-weight: 300; line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); margin-bottom: 20px; }
+  .hero h1 strong { font-weight: 600; }
+  .hero p { font-size: 13px; color: var(--ink-3); max-width: 480px; line-height: 1.7; }
+
+  /* MAIN LAYOUT */
+  .main { max-width: 1080px; margin: 0 auto; padding: 48px 32px 80px; }
+  .section-label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 12px; }
+  .section-title { font-size: 18px; font-weight: 500; color: var(--ink); margin-bottom: 6px; }
+  .section-desc { font-size: 13px; color: var(--ink-3); margin-bottom: 28px; line-height: 1.65; }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+  .tab-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 10px 20px; border: none; background: none; cursor: pointer; color: var(--ink-4); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; }
+  .tab-btn.active { color: var(--ink); border-bottom-color: var(--ink); }
+  .tab-btn:hover:not(.active) { color: var(--ink-2); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* NAVIGATOR SHELL */
+  .nav-shell { display: grid; grid-template-columns: 240px 1fr; border: 1px solid var(--border); min-height: 560px; }
+  @media (max-width: 640px) { .nav-shell { grid-template-columns: 1fr; } }
+
+  /* TREE PANEL */
+  .tree-panel { background: var(--off); border-right: 1px solid var(--border); padding: 28px 20px; }
+  .tree-panel-label { font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 24px; }
+  .tree-list { display: flex; flex-direction: column; }
+  .tree-row { display: flex; gap: 12px; align-items: flex-start; opacity: 0; transform: translateX(-6px); transition: opacity 0.25s, transform 0.25s; }
+  .tree-row.show { opacity: 1; transform: translateX(0); }
+  .tree-spine { display: flex; flex-direction: column; align-items: center; padding-top: 5px; flex-shrink: 0; }
+  .tree-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-dark); transition: background 0.2s; flex-shrink: 0; }
+  .tree-row.current .tree-dot { background: var(--ink); }
+  .tree-row.done .tree-dot { background: var(--ink-3); }
+  .tree-row.result-row .tree-dot { background: var(--green); }
+  .tree-spine-line { width: 1px; background: var(--border); flex: 1; min-height: 18px; }
+  .tree-text { padding-bottom: 20px; }
+  .tree-node-name { font-size: 11px; color: var(--ink-2); line-height: 1.4; }
+  .tree-choice { font-size: 10px; color: var(--ink-3); margin-top: 3px; line-height: 1.4; display: block; }
+  .tree-row.result-row .tree-choice { color: var(--green); }
+
+  /* QUESTION PANEL */
+  .q-panel { padding: 40px 36px; display: flex; flex-direction: column; justify-content: center; }
+  .q-step-label { font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 18px; }
+
+  /* P / Q COLOR HIGHLIGHTS */
+  .p-hl { background: var(--p-bg); color: var(--p-color); padding: 1px 4px; font-weight: 500; font-style: normal; }
+  .q-hl { background: var(--q-bg); color: var(--q-color); padding: 1px 4px; font-weight: 500; font-style: normal; }
+
+  /* ONBOARDING */
+  .onboard-wrap { max-width: 560px; }
+  .onboard-intro { font-size: 13px; color: var(--ink-2); margin-bottom: 24px; line-height: 1.7; }
+  .examples-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+  @media (max-width: 560px) { .examples-grid { grid-template-columns: 1fr; } }
+  .example-card { border: 1px solid var(--border); padding: 16px; background: var(--bg); }
+  .ex-type { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 10px; }
+  .ex-statement { font-size: 12px; color: var(--ink); font-style: italic; margin-bottom: 14px; line-height: 1.65; border-left: 3px solid var(--border); padding-left: 10px; }
+  .ex-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: baseline; }
+  .ex-row:last-child { margin-bottom: 0; }
+  .ex-tag { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px; flex-shrink: 0; font-weight: 500; }
+  .tag-p { background: var(--p-bg); color: var(--p-color); border: 1px solid var(--p-border); }
+  .tag-q { background: var(--q-bg); color: var(--q-color); border: 1px solid var(--q-border); }
+  .ex-val { font-size: 11px; color: var(--ink-3); line-height: 1.5; }
+  .pq-note { font-size: 12px; color: var(--ink-3); line-height: 1.7; margin-bottom: 32px; padding: 16px; background: var(--off); border: 1px solid var(--border); }
+  .pq-note strong { font-weight: 500; color: var(--ink); }
+
+  /* START BUTTON */
+  .start-wrap { display: flex; justify-content: center; }
+  .continue-btn { background: var(--yellow); color: var(--ink); border: none; padding: 18px 56px; font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: background 0.15s, box-shadow 0.15s; display: block; width: 100%; max-width: 400px; text-align: center; }
+  .continue-btn:hover { background: #ffe800; box-shadow: 0 2px 0 0 var(--ink); }
+
+  /* Q1 EXAMPLES */
+  .q-examples { max-width: 500px; margin-bottom: 20px; border: 1px solid var(--border); }
+  .q-ex-header { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); padding: 10px 14px 8px; border-bottom: 1px solid var(--border); background: var(--off); }
+  .q-ex-row { display: flex; align-items: baseline; gap: 12px; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+  .q-ex-row:last-child { border-bottom: none; }
+  .q-ex-sym { color: var(--ink); font-weight: 600; min-width: 40px; flex-shrink: 0; font-size: 13px; }
+  .q-ex-stmt { font-size: 12px; color: var(--ink-2); line-height: 1.5; font-style: italic; }
+  .hl { background: var(--yellow); color: var(--ink); padding: 1px 4px; font-style: normal; font-weight: 500; }
+
+  /* QUESTION BUBBLE */
+  .q-bubble { border: 1px solid var(--border); padding: 18px 20px; max-width: 500px; margin-bottom: 20px; background: var(--off); animation: fadeUp 0.3s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .q-text { font-size: 14px; color: var(--ink); line-height: 1.6; }
+  .q-hint { font-size: 11px; color: var(--ink-4); margin-top: 8px; display: block; line-height: 1.5; }
+  .q-options { display: flex; flex-direction: column; gap: 8px; max-width: 500px; }
+  .q-opt { background: var(--bg); border: 1px solid var(--border); padding: 12px 16px; text-align: left; cursor: pointer; font-family: var(--mono); font-size: 12px; color: var(--ink-2); transition: border-color 0.12s, background 0.12s; line-height: 1.5; display: flex; align-items: baseline; gap: 10px; }
+  .q-opt:hover { border-color: var(--ink); background: var(--yellow-dim); }
+  .opt-sym { font-size: 11px; color: var(--ink-3); flex-shrink: 0; min-width: 32px; font-weight: 500; }
+  .reset-btn { background: none; border: 1px solid var(--border); padding: 7px 14px; cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); transition: color 0.12s, border-color 0.12s; }
+  .reset-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+  .back-btn { background: none; border: 1px solid var(--border); padding: 7px 14px; cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); transition: color 0.12s, border-color 0.12s; margin-right: 8px; }
+  .back-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+  .kbd-hint { font-size: 9px; color: var(--ink-4); letter-spacing: 0.06em; margin-top: 10px; }
+  kbd { font-family: var(--mono); font-size: 9px; background: var(--off); border: 1px solid var(--border); padding: 1px 4px; color: var(--ink-3); }
+
+  /* RESULT */
+  .result-card { border: 1px solid #a3c9a8; padding: 22px 24px; max-width: 500px; background: var(--green-soft); animation: fadeUp 0.3s ease; margin-bottom: 16px; }
+  .result-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--green); margin-bottom: 10px; }
+  .result-name { font-size: 20px; font-weight: 500; color: var(--green); margin-bottom: 6px; line-height: 1.25; }
+  .result-when { font-size: 11px; color: #155724; line-height: 1.55; }
+  .open-btn { background: var(--green); color: #fff; border: none; padding: 10px 18px; font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; }
+  .open-btn:hover { background: #0e6027; }
+
+  /* REASONING TRAIL */
+  .reasoning-trail { border: 1px solid var(--border); padding: 14px 16px; max-width: 500px; margin-bottom: 16px; background: var(--off); animation: fadeUp 0.3s ease; }
+  .trail-step { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 11px; gap: 16px; }
+  .trail-step:last-child { border-bottom: none; padding-bottom: 0; }
+  .trail-q { color: var(--ink-3); flex: 1; }
+  .trail-a { color: var(--ink); font-weight: 500; flex-shrink: 0; }
+
+  /* METHODS TAB */
+  .methods-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .methods-grid { grid-template-columns: 1fr; } }
+  .method-card { border: 1px solid var(--border); padding: 20px 22px; }
+  .method-card-name { font-size: 15px; font-weight: 500; color: var(--ink); margin-bottom: 6px; margin-top: 10px; }
+  .method-card-when { font-size: 11px; color: var(--ink-3); line-height: 1.6; margin-bottom: 10px; border-left: 2px solid var(--border-dark); padding-left: 10px; }
+  .method-card-desc { font-size: 12px; color: var(--ink-3); line-height: 1.7; }
+  .method-card-btn { margin-top: 14px; background: none; border: 1px solid var(--border); padding: 6px 12px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; transition: border-color 0.12s, color 0.12s; }
+  .method-card-btn:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* DRAWER */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  .overlay.on { opacity: 1; pointer-events: all; }
+  .drawer { position: fixed; right: 0; top: 0; bottom: 0; width: min(500px, 94vw); background: var(--bg); border-left: 1px solid var(--border); z-index: 301; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); overflow-y: auto; }
+  .drawer.on { transform: translateX(0); }
+  .drawer-inner { padding: 40px 32px 72px; }
+  .drawer-close { position: absolute; top: 16px; right: 16px; background: none; border: 1px solid var(--border); width: 30px; height: 30px; cursor: pointer; font-size: 14px; color: var(--ink-3); display: flex; align-items: center; justify-content: center; transition: color 0.12s, border-color 0.12s; font-family: var(--mono); }
+  .drawer-close:hover { color: var(--ink); border-color: var(--ink-3); }
+  .d-tag { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; padding: 3px 8px; display: inline-block; margin-bottom: 14px; }
+  .drawer-inner h3 { font-size: 20px; font-weight: 500; color: var(--ink); margin-bottom: 6px; line-height: 1.3; }
+  .d-when { font-size: 11px; color: var(--ink-3); margin-bottom: 16px; line-height: 1.55; }
+  .d-desc { font-size: 13px; color: var(--ink-2); margin-bottom: 20px; line-height: 1.7; }
+  .d-hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .d-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 10px; }
+  .d-steps { list-style: none; margin-bottom: 8px; }
+  .d-n { font-size: 10px; color: var(--ink-4); min-width: 16px; padding-top: 1px; flex-shrink: 0; }
+  .d-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+  .d-chip { font-size: 10px; padding: 4px 9px; border: 1px solid var(--border); color: var(--ink-2); background: var(--off); cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s; }
+  .d-chip:hover { background: var(--yellow-dim); border-color: var(--ink-3); }
+  .d-chip.copied { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+  .d-links { display: flex; gap: 10px; flex-wrap: wrap; }
+  .d-link { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; padding: 8px 14px; border: 1px solid var(--border); color: var(--ink-3); background: var(--bg); transition: border-color 0.12s, color 0.12s; }
+  .d-link:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* STEP REVEAL */
+  .d-step { display: flex; gap: 12px; margin-bottom: 0; font-size: 12px; color: var(--ink-2); line-height: 1.6; opacity: 0; max-height: 0; overflow: hidden; transition: opacity 0.35s ease, max-height 0.4s ease, margin-bottom 0.35s ease; }
+  .d-step.revealed { opacity: 1; max-height: 200px; margin-bottom: 11px; }
+  .step-reveal-btn { background: none; border: 1px solid var(--ink); color: var(--ink); padding: 7px 14px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; margin-top: 4px; margin-bottom: 16px; display: block; transition: background 0.12s, color 0.12s; }
+  .step-reveal-btn:hover:not(:disabled) { background: var(--yellow-dim); }
+  .step-reveal-btn:disabled { border-color: var(--border); color: var(--ink-4); cursor: default; }
+
+  /* WORKED EXAMPLE */
+  .d-example { background: var(--off); border: 1px solid var(--border); padding: 14px 16px; }
+  .d-example-stmt { font-size: 12px; color: var(--ink); font-style: italic; border-left: 2px solid var(--border-dark); padding-left: 10px; line-height: 1.6; }
+  .d-example-toggle { background: none; border: none; color: var(--ink-3); font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; cursor: pointer; padding: 8px 0 4px; text-transform: uppercase; display: block; text-decoration: underline; text-underline-offset: 3px; }
+  .d-example-hint { display: none; font-size: 11px; color: var(--ink-2); line-height: 1.7; padding: 12px 14px; background: var(--bg); border: 1px solid var(--border); border-top: none; margin-bottom: 4px; }
+
+  /* GLOSSARY */
+  .gloss-section { max-width: 1080px; margin: 0 auto; padding: 0 32px 80px; border-top: 1px solid var(--border); padding-top: 48px; }
+  .gloss-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  .gloss-table th { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); text-align: left; padding: 0 14px 10px 0; border-bottom: 1px solid var(--border); font-weight: 400; }
+  .gloss-table td { padding: 12px 14px 12px 0; border-bottom: 1px solid var(--off); vertical-align: top; font-size: 12px; }
+  .gloss-table tr:last-child td { border-bottom: none; }
+  .g-sym { color: var(--ink); min-width: 80px; font-weight: 500; }
+  .g-term { color: var(--ink); font-weight: 500; }
+  .g-def { color: var(--ink-3); line-height: 1.55; }
+
+  footer { max-width: 1080px; margin: 0 auto; padding: 24px 32px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 10px; color: var(--ink-4); letter-spacing: 0.06em; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="#">Proof Navigator</a>
+    <ul>
+      <li><a class="nav-link" href="#nav-section">Navigator</a></li>
+      <li><a class="nav-link" href="#gloss-section">Glossary</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="hero">
+  <p class="hero-label">Reference document · Mathematics</p>
+  <h1>How to choose a<br><strong>proof strategy</strong></h1>
+  <p>Answer a series of questions about your statement. The tool identifies your method and opens a full step-by-step toolbox.</p>
+</div>
+
+<div class="main" id="nav-section">
+  <p class="section-label">01 — Navigator</p>
+  <p class="section-title">What does your statement say?</p>
+  <p class="section-desc">Work through the questions. Your path builds on the left as you go.</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="navigator" onclick="showTab('navigator')">Navigator</button>
+    <button class="tab-btn" data-tab="methods" onclick="showTab('methods')">Proof methods</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-navigator">
+    <div class="nav-shell">
+      <div class="tree-panel">
+        <p class="tree-panel-label">Your path</p>
+        <div class="tree-list" id="treeList"></div>
+      </div>
+      <div class="q-panel" id="qPanel"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-methods">
+    <div class="methods-grid" id="methodsGrid"></div>
+  </div>
+</div>
+
+<div class="gloss-section" id="gloss-section">
+  <p class="section-label">02 — Reference</p>
+  <p class="section-title">Notation glossary</p>
+  <p class="section-desc" style="margin-bottom:0">Symbols that appear in almost every proof-based course.</p>
+  <table class="gloss-table">
+    <thead><tr><th style="width:90px">Symbol</th><th style="width:180px">Term</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td class="g-sym">∀</td><td class="g-term">For all</td><td class="g-def">"For all x in S, P(x)" — the statement must hold for every element, no exceptions.</td></tr>
+      <tr><td class="g-sym">∃</td><td class="g-term">There exists</td><td class="g-def">"There exists x in S such that P(x)" — you only need one example (a witness).</td></tr>
+      <tr><td class="g-sym">¬ / "not"</td><td class="g-term">Negation</td><td class="g-def">¬P is the opposite of P. Negating "for all" gives "there exists...not". Negating "there exists" gives "for all...not".</td></tr>
+      <tr><td class="g-sym">→</td><td class="g-term">Implies</td><td class="g-def">P → Q: "if P then Q." The hypothesis P is what you're given; the conclusion Q is what you must show.</td></tr>
+      <tr><td class="g-sym">↔</td><td class="g-term">If and only if</td><td class="g-def">P ↔ Q means P → Q and Q → P. Both directions must be proved separately.</td></tr>
+      <tr><td class="g-sym">⊥</td><td class="g-term">Contradiction</td><td class="g-def">Two statements that cannot both be true — the target in proof by contradiction.</td></tr>
+      <tr><td class="g-sym">□ / QED</td><td class="g-term">End of proof</td><td class="g-def">Signals the proof is complete. QED = quod erat demonstrandum ("what was to be shown").</td></tr>
+      <tr><td class="g-sym">WLOG</td><td class="g-term">Without loss of generality</td><td class="g-def">The argument is symmetric, so proving one case covers all. Must be justified explicitly.</td></tr>
+      <tr><td class="g-sym">ℕ, ℤ, ℚ, ℝ</td><td class="g-term">Number sets</td><td class="g-def">Natural numbers (0,1,2,...), integers (...−1,0,1,...), rationals, reals. Know which set your variable lives in.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  <span>Proof Navigator</span>
+  <span>ENGW 3307 · Reference document</span>
+</footer>
+
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-inner">
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+    <div id="drawerContent"></div>
+  </div>
+</div>
+
+<script>
+// ── METHODS ───────────────────────────────────────────────────────────────
+const M = {
+  induction: {
+    name: 'Mathematical induction',
+    tag: 'Induction',
+    tc: 'background:#defbe6;color:#198038',
+    when: 'Signal: "for all n", sequences, sums, recursive structure, discrete steps',
+    desc: 'Prove a base case, then show that if the statement holds at step k it must hold at step k+1. Together these dominos establish the statement for every value.',
+    steps: [
+      '<em>Base case:</em> prove P(0) or P(1) directly — just compute or verify.',
+      'State the <em>inductive hypothesis:</em> "Assume the statement holds for some k."',
+      'Using that assumption, prove it holds for k+1.',
+      'Conclude: "By induction, the statement holds for all n." □'
+    ],
+    tools: ['Base case', 'Inductive hypothesis', 'Assume P(k)', 'We show P(k+1)', 'By induction', 'For all n ≥ …'],
+    example: 'Prove that 1 + 2 + ··· + n = n(n+1)/2 for all n ≥ 1.',
+    exHint: 'Base (n=1): left = 1, right = 1·2/2 = 1. ✓  Inductive step: assume 1+…+k = k(k+1)/2. Then 1+…+k+(k+1) = k(k+1)/2 + (k+1) = (k+1)(k+2)/2. ✓  By induction, holds for all n ≥ 1. □',
+    wiki: 'https://en.wikipedia.org/wiki/Mathematical_induction',
+    video: 'https://www.youtube.com/watch?v=wblW_M_HVQ8'
+  },
+  constructive: {
+    name: 'Constructive proof',
+    tag: 'Constructive',
+    tc: 'background:#d9fbfb;color:#005d5d',
+    when: 'Signal: "there exists", "there is some x" — you only need one example',
+    desc: 'You do not need a general argument. Exhibit one specific object — a witness — and verify it satisfies the required property. That is the whole proof.',
+    steps: [
+      'Identify what kind of object you need to produce.',
+      'Construct it explicitly, or name a known example.',
+      'Verify it satisfies all the required conditions.',
+      'Conclude: "Therefore such an object exists." □'
+    ],
+    tools: ['Let x =', 'Consider', 'We exhibit', 'Observe that', 'This satisfies', 'Therefore such an object exists'],
+    example: 'Prove there exists an even prime number.',
+    exHint: 'Let x = 2. Then 2 is divisible only by 1 and itself, so it is prime. It is also even. Therefore an even prime exists. □',
+    wiki: 'https://en.wikipedia.org/wiki/Constructive_proof',
+    video: 'https://www.youtube.com/watch?v=6kFysWMn9-Y'
+  },
+  iff: {
+    name: 'Biconditional proof',
+    tag: 'Biconditional (iff)',
+    tc: 'background:#d9fbfb;color:#005d5d',
+    when: 'Signal: "if and only if", "iff", "exactly when", "necessary and sufficient"',
+    desc: 'An iff statement is two implications in one. Treat them as two separate sub-proofs, each using whatever method fits. Label them (→) and (←) clearly so the reader can follow.',
+    steps: [
+      'Write "(→)" — assume P, and prove Q using any method.',
+      'Write "(←)" — assume Q, and prove P using any method.',
+      'Conclude: "Since both directions hold, P ↔ Q." □'
+    ],
+    tools: ['(→) Forward direction', '(←) Backward direction', 'Assume P', 'Conversely, assume Q', 'Both directions hold'],
+    example: 'Prove: an integer n is even ↔ n² is even.',
+    exHint: '(→) If n = 2k then n² = 4k² = 2(2k²), which is even. ✓  (←) Suppose n² is even but n is odd; then n = 2k+1 so n² = 4k²+4k+1, which is odd — contradiction. So n must be even. ✓  □',
+    wiki: 'https://en.wikipedia.org/wiki/Biconditional_introduction',
+    video: 'https://www.youtube.com/watch?v=rKoIcurNLdY'
+  },
+  direct: {
+    name: 'Direct proof',
+    tag: 'Direct',
+    tc: 'background:#edf4ff;color:#0043ce',
+    when: 'Signal: "if P then Q" — hypothesis gives enough structure to work forward',
+    desc: 'Assume the hypothesis. Unpack its definitions. Apply known facts and algebra, step by step, until you reach the conclusion. Clean and transparent when it works — try this first.',
+    steps: [
+      'Write: "Assume P." (or "Assume [the hypothesis].")',
+      'Unpack every definition or condition in P explicitly.',
+      'Apply known theorems, algebra, or logic toward Q.',
+      'Write: "Therefore Q." □'
+    ],
+    tools: ['Assume', 'By definition', 'Then', 'It follows that', 'Therefore', 'Thus', 'We have'],
+    example: 'Prove: if n is even, then n² is divisible by 4.',
+    exHint: 'Assume n is even, so n = 2k for some integer k. Then n² = (2k)² = 4k². Since 4k² = 4·k², n² is divisible by 4. □',
+    wiki: 'https://en.wikipedia.org/wiki/Direct_proof',
+    video: 'https://www.youtube.com/watch?v=b55dOETMqsk'
+  },
+  cases: {
+    name: 'Proof by cases',
+    tag: 'Cases',
+    tc: 'background:#fff2e8;color:#8a3800',
+    when: 'Signal: domain splits naturally — odd/even, sign, boundary values, two types',
+    desc: 'Partition the domain into exhaustive, mutually exclusive cases. Prove the statement within each case independently. Together they cover every possibility.',
+    steps: [
+      'Identify a partition of the domain that covers every possibility.',
+      'Write "Case 1: [assumption]." Prove the statement within this case.',
+      'Write "Case 2: [assumption]." Prove the statement within this case.',
+      'Conclude: "In all cases, the statement holds." □'
+    ],
+    tools: ['Case 1 / Case 2', 'Suppose n is even', 'Suppose n is odd', 'In this case', 'In all cases', 'Since the cases are exhaustive'],
+    example: 'Prove: n² + n is even for every integer n.',
+    exHint: 'Case 1 (n even): n = 2k, so n²+n = 4k²+2k = 2(2k²+k). Even. ✓  Case 2 (n odd): n = 2k+1, so n²+n = (2k+1)²+(2k+1) = 4k²+6k+2 = 2(2k²+3k+1). Even. ✓  In all cases n²+n is even. □',
+    wiki: 'https://en.wikipedia.org/wiki/Proof_by_exhaustion',
+    video: 'https://www.youtube.com/watch?v=pLEmMbBhNMw'
+  },
+  contradiction: {
+    name: 'Proof by contradiction',
+    tag: 'Contradiction',
+    tc: 'background:#fff1f1;color:#a2191f',
+    when: 'Signal: the conclusion is hard to reach directly; assuming it\'s false gives something to work with',
+    desc: 'Assume the hypothesis is true but the conclusion is false. Show this leads to an impossibility — something that contradicts the hypothesis, a known fact, or itself. Since the assumption produced a falsehood, the conclusion must be true.',
+    steps: [
+      'Write: "Suppose for contradiction that [not Q]."',
+      'Combine the hypothesis and "not Q". Derive consequences.',
+      'Arrive at a statement ⊥ that is clearly impossible.',
+      'Write: "This is a contradiction. Therefore Q must hold." □'
+    ],
+    tools: ['Suppose for contradiction', 'Assume not Q', 'But then', 'This contradicts', 'Which is impossible', 'Therefore Q must hold'],
+    example: 'Prove that √2 is irrational.',
+    exHint: 'Suppose for contradiction that √2 = p/q with gcd(p,q) = 1. Then 2q² = p², so p is even; write p = 2m. Then 2q² = 4m², so q² is even, making q even too. But then gcd(p,q) ≥ 2 — contradiction. Therefore √2 is irrational. □',
+    wiki: 'https://en.wikipedia.org/wiki/Proof_by_contradiction',
+    video: 'https://www.youtube.com/watch?v=cpQQSgSIIHw'
+  },
+  contrapositive: {
+    name: 'Proof by contrapositive',
+    tag: 'Contrapositive',
+    tc: 'background:#f6f2ff;color:#6929c4',
+    when: 'Signal: "if P then Q" where flipping both sides — "if not Q then not P" — is easier to prove',
+    desc: '"If P then Q" is logically identical to "if not Q then not P." If the negation of the conclusion gives you a cleaner starting point, prove the contrapositive instead — it is equally valid.',
+    steps: [
+      'Write: "We prove the contrapositive: assume not Q."',
+      'Unpack what "not Q" means concretely.',
+      'Derive "not P" from "not Q" by direct logic.',
+      'Write: "Therefore not Q implies not P, which is equivalent to P implies Q." □'
+    ],
+    tools: ['We prove the contrapositive', 'Assume not Q', 'Then not P follows', 'By contrapositive', 'Which is equivalent to P implies Q'],
+    example: 'Prove: if n² is odd, then n is odd.',
+    exHint: 'We prove the contrapositive: assume n is even, so n = 2k. Then n² = 4k² = 2(2k²), which is even. So n even ⟹ n² even, equivalently n² odd ⟹ n odd. □',
+    wiki: 'https://en.wikipedia.org/wiki/Contraposition',
+    video: 'https://www.youtube.com/watch?v=pf3kOBaWkss'
+  }
+};
+
+// ── NODES ─────────────────────────────────────────────────────────────────
+const N = {
+  onboard: { id: 'onboard', label: 'What are P and Q?', type: 'onboard' },
+  q1: {
+    id: 'q1',
+    label: 'What kind of claim?',
+    q: 'What kind of claim is your statement making?',
+    hint: 'Look at the opening words — they usually give it away.',
+    opts: [
+      { sym: '∀', text: 'It holds for every case — "for all n", "for any x", "for every…"', next: 'q2a' },
+      { sym: '∃', text: 'Something exists — "there exists", "there is some…", "find an…"', next: 'q_exists' },
+      { sym: 'P ↔ Q', text: '"…if and only if…" or "…exactly when…"', next: 'result:iff' },
+      { sym: 'P → Q', text: '"If … then …" or "assuming …, show that …"', next: 'q4' },
+    ]
+  },
+  q2a: {
+    id: 'q2a',
+    label: 'Universal — what domain?',
+    q: 'Does the statement range over a countable list — integers, steps, levels, a sequence?',
+    hint: 'e.g. "for all integers n ≥ 1", "for every energy level n", "the nth term", "for all n steps"',
+    opts: [
+      { sym: 'Yes', text: 'Yes — it steps through n = 1, 2, 3… or some countable list', next: 'result:induction' },
+      { sym: 'No', text: 'No — it ranges over all real numbers, all functions, all sets, etc.', next: 'q2b' },
+    ]
+  },
+  q2b: {
+    id: 'q2b',
+    label: 'Universal, continuous domain',
+    q: 'Does the domain split into natural sub-groups you could handle separately?',
+    hint: 'e.g. positive vs. negative, rational vs. irrational, two types of elements',
+    opts: [
+      { sym: 'Yes', text: 'Yes — I can split it into cases (sign, type, boundary…)', next: 'result:cases' },
+      { sym: 'No', text: 'No — everything in the domain is treated the same way', next: 'result:direct' },
+    ]
+  },
+  q_exists: {
+    id: 'q_exists',
+    label: 'Existence claim (∃)',
+    q: 'Can you just name or build a specific example that works?',
+    hint: 'Try writing one down. If it checks out, that\'s your whole proof.',
+    opts: [
+      { sym: 'Yes', text: 'Yes — I can write down a specific example and check it satisfies everything', next: 'result:constructive' },
+      { sym: 'No', text: 'No — the existence isn\'t obvious; I can\'t just point to one', next: 'result:contradiction' },
+    ]
+  },
+  q4: {
+    id: 'q4',
+    label: 'Does the domain split?',
+    q: 'Can you split the things your statement talks about into two or more natural groups?',
+    hint: 'e.g. "n could be even or odd", "x could be positive, zero, or negative", "two types of input"',
+    opts: [
+      { sym: 'Yes', text: 'Yes — there\'s a natural split that covers every possibility', next: 'result:cases' },
+      { sym: 'No', text: 'No — everything is one uniform group, no obvious divide', next: 'q5' },
+    ]
+  },
+  q5: {
+    id: 'q5',
+    label: 'Flip the conclusion',
+    q: 'Write out the opposite of what you\'re trying to prove. What do you get?',
+    hint: 'If you need to show "n is even", the opposite is "n is odd". If you need "x > 0", the opposite is "x ≤ 0". Is that opposite something concrete you could work with?',
+    opts: [
+      { sym: 'Useful', text: 'The opposite is concrete — a specific number, object, or condition I could calculate with', next: 'q6' },
+      { sym: 'Vague', text: 'The opposite is fuzzy or doesn\'t give me anything to grab onto', next: 'result:direct' },
+    ]
+  },
+  q6: {
+    id: 'q6',
+    label: 'Use the opposite',
+    q: 'Assume the opposite of your conclusion is true, alongside your hypothesis. What happens?',
+    hint: 'Sketch a few lines. Does it blow up into a contradiction? Or does it lead naturally to the opposite of the hypothesis?',
+    opts: [
+      { sym: '⊥', text: 'Combining the hypothesis with the opposite leads to something impossible', next: 'result:contradiction' },
+      { sym: '¬P', text: 'The opposite of the conclusion naturally leads to the opposite of the hypothesis', next: 'result:contrapositive' },
+    ]
+  }
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+let path = [];
+let cur = 'onboard';
+let drawerKey = null;
+let revealedCount = 0;
+
+// ── TABS ──────────────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + id));
+}
+
+function buildMethodsGrid() {
+  const grid = document.getElementById('methodsGrid');
+  if (!grid) return;
+  grid.innerHTML = Object.keys(M).map(key => {
+    const m = M[key];
+    return `
+      <div class="method-card">
+        <span class="d-tag" style="${m.tc}">${m.tag}</span>
+        <p class="method-card-name">${m.name}</p>
+        <p class="method-card-when">${m.when}</p>
+        <p class="method-card-desc">${m.desc}</p>
+        <button class="method-card-btn" onclick="openDrawer('${key}')">Open full toolbox ↗</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── TREE ──────────────────────────────────────────────────────────────────
+function addTreeRow(label, choice, isResult, isCurrent) {
+  const list = document.getElementById('treeList');
+  const row = document.createElement('div');
+  row.className = isResult ? 'tree-row result-row' : isCurrent ? 'tree-row current' : 'tree-row done';
+  row.innerHTML = `
+    <div class="tree-spine">
+      <div class="tree-dot"></div>
+      <div class="tree-spine-line"></div>
+    </div>
+    <div class="tree-text">
+      <div class="tree-node-name">${label}</div>
+      ${choice ? `<span class="tree-choice">${isResult ? '→ ' : ''}${choice}</span>` : ''}
+    </div>
+  `;
+  list.appendChild(row);
+  requestAnimationFrame(() => row.classList.add('show'));
+}
+
+function rebuildTree() {
+  document.getElementById('treeList').innerHTML = '';
+  path.forEach((step, i) => {
+    const isLast = i === path.length - 1;
+    addTreeRow(step.label, step.choice, step.isResult, isLast && !step.isResult);
+  });
+}
+
+// ── REASONING TRAIL ───────────────────────────────────────────────────────
+function buildTrail() {
+  const steps = path.filter(s => !s.isResult && s.nodeId !== 'onboard' && s.choice);
+  if (steps.length === 0) return '';
+  return `
+    <div class="reasoning-trail">
+      <p class="d-label" style="margin-bottom:8px">How you got here</p>
+      ${steps.map(s => `
+        <div class="trail-step">
+          <span class="trail-q">${s.label}</span>
+          <span class="trail-a">${s.choice}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function render(nodeId) {
+  const panel = document.getElementById('qPanel');
+  const canGoBack = path.length > 1;
+  panel.style.justifyContent = nodeId.startsWith('result:') ? 'flex-start' : 'center';
+
+  if (nodeId === 'onboard') {
+    panel.innerHTML = `
+      <div class="onboard-wrap">
+        <p class="q-step-label">Step 0 — Before you begin</p>
+        <p class="onboard-intro">Every proof has two parts: a <strong>hypothesis</strong> (what you're given or assuming) and a <strong>conclusion</strong> (what you need to show). Logicians call these <strong>P</strong> and <strong>Q</strong>.</p>
+        <div class="examples-grid">
+          <div class="example-card">
+            <p class="ex-type">Mathematics</p>
+            <p class="ex-statement">"If <span class="p-hl">n² is even</span>, then <span class="q-hl">n is even</span>."</p>
+            <div class="ex-row"><span class="ex-tag tag-p">P</span><span class="ex-val"><span class="p-hl">n² is even</span> — what you're given</span></div>
+            <div class="ex-row"><span class="ex-tag tag-q">Q</span><span class="ex-val"><span class="q-hl">n is even</span> — what you must prove</span></div>
+          </div>
+          <div class="example-card">
+            <p class="ex-type">Physics</p>
+            <p class="ex-statement">"If <span class="p-hl">a system is in thermal equilibrium</span>, then <span class="q-hl">net heat flow is zero</span>."</p>
+            <div class="ex-row"><span class="ex-tag tag-p">P</span><span class="ex-val"><span class="p-hl">System is in thermal equilibrium</span></span></div>
+            <div class="ex-row"><span class="ex-tag tag-q">Q</span><span class="ex-val"><span class="q-hl">Net heat flow is zero</span></span></div>
+          </div>
+        </div>
+        <div class="pq-note">
+          <strong>The goal of a proof</strong> is to show that whenever <span class="p-hl">P</span> is true, <span class="q-hl">Q</span> must also be true — by logic alone, with no gaps. The method you use depends entirely on the structure of <span class="p-hl">P</span> and <span class="q-hl">Q</span>.
+        </div>
+        <div class="start-wrap">
+          <button class="continue-btn" onclick="startNav()">Start the navigator →</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (nodeId.startsWith('result:')) {
+    const key = nodeId.replace('result:', '');
+    const m = M[key];
+    drawerKey = key;
+    revealedCount = 1;
+    panel.innerHTML = `
+      <p class="q-step-label">Step ${path.length - 1} — Result</p>
+      <div class="result-card">
+        <p class="result-label">Method identified</p>
+        <p class="result-name">${m.name}</p>
+        <p class="result-when">${m.when}</p>
+      </div>
+      ${buildTrail()}
+      <div class="inline-toolbox">
+        <p class="d-desc">${m.desc}</p>
+        <div class="d-hr"></div>
+        <p class="d-label">Steps</p>
+        <ul class="d-steps">
+          ${m.steps.map((s, i) => `
+            <li id="d-step-${i+1}" class="d-step${i === 0 ? ' revealed' : ''}">
+              <span class="d-n">${i+1}.</span><span>${s}</span>
+            </li>
+          `).join('')}
+        </ul>
+        ${m.steps.length > 1 ? `<button id="revealBtn" class="step-reveal-btn" onclick="revealStep()">Reveal step 2 of ${m.steps.length} →</button>` : ''}
+        <p class="d-label">Words that belong in this proof</p>
+        <div class="d-chips">
+          ${m.tools.map(t => `<span class="d-chip" onclick="copyChip(this,${JSON.stringify(t)})" title="Click to copy">${t}</span>`).join('')}
+        </div>
+        <div class="d-hr"></div>
+        <p class="d-label">Worked example</p>
+        <div class="d-example"><p class="d-example-stmt">${m.example}</p></div>
+        <button class="d-example-toggle" id="exToggle" onclick="toggleExample()">Show walkthrough ▾</button>
+        <div class="d-example-hint" id="exHint">${m.exHint}</div>
+        <div class="d-hr"></div>
+        <p class="d-label">Learn more</p>
+        <div class="d-links">
+          <a class="d-link" href="${m.wiki}" target="_blank">↗ Wikipedia</a>
+          <a class="d-link" href="${m.video}" target="_blank">▶ Video walkthrough</a>
+        </div>
+      </div>
+      <div style="display:flex;gap:0;margin-top:20px">
+        <button class="back-btn" onclick="goBack()">← Back</button>
+        <button class="reset-btn" onclick="reset()">↩ Start over</button>
+      </div>
+    `;
+    return;
+  }
+
+  const node = N[nodeId];
+
+  const q1Examples = nodeId === 'q1' ? `
+    <div class="q-examples">
+      <p class="q-ex-header">Look for these words in your statement:</p>
+      <div class="q-ex-row"><span class="q-ex-sym">∀</span><span class="q-ex-stmt">"<span class="hl">For all</span> integers n, n² + n is even."</span></div>
+      <div class="q-ex-row"><span class="q-ex-sym">∃</span><span class="q-ex-stmt">"<span class="hl">There exists</span> a prime greater than 100."</span></div>
+      <div class="q-ex-row"><span class="q-ex-sym">↔</span><span class="q-ex-stmt">"n is even <span class="hl">if and only if</span> n² is even."</span></div>
+      <div class="q-ex-row"><span class="q-ex-sym">→</span><span class="q-ex-stmt">"<span class="hl">If</span> n is divisible by 4, <span class="hl">then</span> n is divisible by 2."</span></div>
+    </div>
+  ` : '';
+
+  panel.innerHTML = `
+    <p class="q-step-label">Step ${path.length - 1}</p>
+    <div class="q-bubble">
+      <p class="q-text">${node.q}</p>
+      ${node.hint ? `<span class="q-hint">${node.hint}</span>` : ''}
+    </div>
+    ${q1Examples}
+    <div class="q-options">
+      ${node.opts.map((o, i) => `
+        <button class="q-opt" onclick="choose(${i})">
+          <span class="opt-sym">${o.sym}</span>
+          <span>${o.text}</span>
+        </button>
+      `).join('')}
+    </div>
+    <div style="display:flex;gap:0;margin-top:18px;align-items:center">
+      ${canGoBack ? `<button class="back-btn" onclick="goBack()">← Back</button>` : ''}
+      <button class="reset-btn" onclick="reset()">↩ Start over</button>
+    </div>
+    <p class="kbd-hint">Press <kbd>1</kbd>–<kbd>${node.opts.length}</kbd> to choose</p>
+  `;
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────
+function startNav() {
+  path[path.length - 1].choice = 'Started';
+  cur = 'q1';
+  path.push({ nodeId: 'q1', label: N['q1'].label, choice: null, isResult: false });
+  rebuildTree();
+  render('q1');
+}
+
+function choose(i) {
+  const node = N[cur];
+  const opt = node.opts[i];
+  path[path.length - 1].choice = opt.sym;
+
+  if (opt.next.startsWith('result:')) {
+    const key = opt.next.replace('result:', '');
+    cur = opt.next;
+    path.push({ nodeId: opt.next, label: M[key].name, choice: null, isResult: true });
+  } else {
+    cur = opt.next;
+    path.push({ nodeId: opt.next, label: N[opt.next].label, choice: null, isResult: false });
+  }
+  rebuildTree();
+  render(cur);
+}
+
+function goBack() {
+  if (path.length <= 1) return;
+  path.pop();
+  path[path.length - 1].choice = null;
+  cur = path[path.length - 1].nodeId;
+  rebuildTree();
+  render(cur);
+}
+
+function reset() {
+  path = [{ nodeId: 'onboard', label: 'Introduction', choice: null, isResult: false }];
+  cur = 'onboard';
+  rebuildTree();
+  render('onboard');
+}
+
+// ── DRAWER ────────────────────────────────────────────────────────────────
+function openDrawer(key) {
+  drawerKey = key;
+  revealedCount = 1;
+  const m = M[key];
+  document.getElementById('drawerContent').innerHTML = `
+    <span class="d-tag" style="${m.tc}">${m.tag}</span>
+    <h3>${m.name}</h3>
+    <p class="d-when">${m.when}</p>
+    <p class="d-desc">${m.desc}</p>
+    <div class="d-hr"></div>
+    <p class="d-label">Steps</p>
+    <ul class="d-steps">
+      ${m.steps.map((s, i) => `
+        <li id="d-step-${i+1}" class="d-step${i === 0 ? ' revealed' : ''}">
+          <span class="d-n">${i+1}.</span><span>${s}</span>
+        </li>
+      `).join('')}
+    </ul>
+    ${m.steps.length > 1 ? `<button id="revealBtn" class="step-reveal-btn" onclick="revealStep()">Reveal step 2 of ${m.steps.length} →</button>` : ''}
+    <p class="d-label">Words that belong in this proof</p>
+    <div class="d-chips">
+      ${m.tools.map(t => `<span class="d-chip" onclick="copyChip(this,${JSON.stringify(t)})" title="Click to copy">${t}</span>`).join('')}
+    </div>
+    <div class="d-hr"></div>
+    <p class="d-label">Worked example</p>
+    <div class="d-example"><p class="d-example-stmt">${m.example}</p></div>
+    <button class="d-example-toggle" id="exToggle" onclick="toggleExample()">Show walkthrough ▾</button>
+    <div class="d-example-hint" id="exHint">${m.exHint}</div>
+    <div class="d-hr"></div>
+    <p class="d-label">Learn more</p>
+    <div class="d-links">
+      <a class="d-link" href="${m.wiki}" target="_blank">↗ Wikipedia</a>
+      <a class="d-link" href="${m.video}" target="_blank">▶ Video walkthrough</a>
+    </div>
+  `;
+  document.getElementById('drawer').classList.add('on');
+  document.getElementById('overlay').classList.add('on');
+}
+
+function revealStep() {
+  if (!drawerKey) return;
+  const m = M[drawerKey];
+  if (revealedCount < m.steps.length) {
+    revealedCount++;
+    const el = document.getElementById(`d-step-${revealedCount}`);
+    if (el) el.classList.add('revealed');
+    const btn = document.getElementById('revealBtn');
+    if (btn) {
+      if (revealedCount >= m.steps.length) {
+        btn.textContent = 'All steps revealed ✓';
+        btn.disabled = true;
+      } else {
+        btn.textContent = `Reveal step ${revealedCount + 1} of ${m.steps.length} →`;
+      }
+    }
+  }
+}
+
+function toggleExample() {
+  const hint = document.getElementById('exHint');
+  const btn = document.getElementById('exToggle');
+  if (!hint || !btn) return;
+  const open = hint.style.display === 'block';
+  hint.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? 'Show walkthrough ▾' : 'Hide walkthrough ▴';
+}
+
+function copyChip(el, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = el.textContent;
+    el.textContent = 'Copied!';
+    el.classList.add('copied');
+    setTimeout(() => { el.textContent = orig; el.classList.remove('copied'); }, 1200);
+  });
+}
+
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('on');
+  document.getElementById('overlay').classList.remove('on');
+}
+
+// ── KEYBOARD ──────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('drawer').classList.contains('on')) { closeDrawer(); return; }
+  }
+  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const n = parseInt(e.key);
+  if (n >= 1 && n <= 4 && !cur.startsWith('result:') && cur !== 'onboard') {
+    const node = N[cur];
+    if (node && node.opts && node.opts[n - 1]) choose(n - 1);
+  }
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  path.push({ nodeId: 'onboard', label: 'Introduction', choice: null, isResult: false });
+  rebuildTree();
+  render('onboard');
+  buildMethodsGrid();
+});
+</script>
+</body>
+</html>
