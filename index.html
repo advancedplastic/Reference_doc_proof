@@ -224,7 +224,9 @@
     <a class="nav-logo" href="#" onclick="showView('navigator');return false;">Proof Navigator</a>
     <ul>
       <li><a class="nav-link active" href="#" id="nav-btn-navigator" onclick="showView('navigator');return false;">Navigator</a></li>
-      <li><a class="nav-link" href="#" id="nav-btn-reference" onclick="showView('reference');return false;">Reference</a></li>
+      <li><a class="nav-link" href="#" id="nav-btn-methods" onclick="showView('methods');return false;">All Methods</a></li>
+      <li><a class="nav-link" href="#" id="nav-btn-mistakes" onclick="showView('mistakes');return false;">Common Mistakes</a></li>
+      <li><a class="nav-link" href="#" id="nav-btn-glossary" onclick="showView('glossary');return false;">Glossary</a></li>
     </ul>
   </div>
 </nav>
@@ -244,50 +246,48 @@
     </div>
   </div>
 
-  <!-- VIEW: REFERENCE -->
-  <div class="view" id="view-reference">
-
-    <!-- METHODS -->
-    <div class="ref-section" id="methods-section">
-      <p class="section-eyebrow">Proof Methods</p>
+  <!-- VIEW: ALL METHODS -->
+  <div class="view" id="view-methods">
+    <div class="ref-section">
       <h2 class="section-title">All proof strategies</h2>
-      <p class="section-sub">Every technique — when to use it and how it works.</p>
+      <p class="section-sub">Every technique — when to use it and how it works. Click any card to open the full step-by-step toolbox.</p>
       <div class="methods-grid" id="methodsGrid"></div>
     </div>
+  </div>
 
-    <!-- PROOF SMELLS -->
-    <div class="ref-section" id="smells-section">
-      <p class="section-eyebrow">Proof Smells</p>
-      <h2 class="section-title">Warning signs your proof has a problem</h2>
-      <p class="section-sub">Common ways proofs fall apart — check here if something feels off.</p>
+  <!-- VIEW: COMMON MISTAKES -->
+  <div class="view" id="view-mistakes">
+    <div class="ref-section">
+      <h2 class="section-title">Common mistakes</h2>
+      <p class="section-sub">The most frequent ways a proof goes wrong. Check here if something feels off.</p>
       <div class="smells-grid" id="smellsGrid"></div>
     </div>
+  </div>
 
-    <!-- GLOSSARY -->
-    <div class="ref-section" id="gloss-section">
-    <p class="section-eyebrow">04 — Reference</p>
-    <h2 class="section-title">Notation glossary</h2>
-    <p class="section-sub">Symbols that appear in almost every proof-based course.</p>
-    <table class="gloss-table">
-      <thead><tr><th style="width:90px">Symbol</th><th style="width:160px">Term</th><th>Meaning</th></tr></thead>
-      <tbody>
-        <tr><td class="g-sym">∀</td><td class="g-term">For all</td><td class="g-def">"For all x in S, P(x)" — the statement must hold for every element, no exceptions.</td></tr>
-        <tr><td class="g-sym">∃</td><td class="g-term">There exists</td><td class="g-def">"There exists x in S such that P(x)" — you only need one example (a witness).</td></tr>
-        <tr><td class="g-sym">∃!</td><td class="g-term">Unique existence</td><td class="g-def">"There exists a unique x in S such that P(x)" — you must prove both existence and uniqueness.</td></tr>
-        <tr><td class="g-sym">¬ / "not"</td><td class="g-term">Negation</td><td class="g-def">¬P is the opposite of P. Negating "for all" gives "there exists...not". Negating "there exists" gives "for all...not".</td></tr>
-        <tr><td class="g-sym">→</td><td class="g-term">Implies</td><td class="g-def">P → Q: "if P then Q." The hypothesis P is what you're given; the conclusion Q is what you must show.</td></tr>
-        <tr><td class="g-sym">↔ / iff </td><td class="g-term">If and only if</td><td class="g-def">P ↔ Q means P → Q and Q → P. Both directions must be proved separately.</td></tr>
-        <tr><td class="g-sym">⊥</td><td class="g-term">Contradiction</td><td class="g-def">Two statements that cannot both be true — the target in proof by contradiction.</td></tr>
-        <tr><td class="g-sym">□ / QED</td><td class="g-term">End of proof</td><td class="g-def">Signals the proof is complete. QED = quod erat demonstrandum ("what was to be shown").</td></tr>
-        <tr><td class="g-sym">WLOG</td><td class="g-term">Without loss of generality</td><td class="g-def">The argument is symmetric, so proving one case covers all. Must be justified explicitly.</td></tr>
-        <tr><td class="g-sym">ℕ, ℤ, ℚ, ℝ</td><td class="g-term">Number sets</td><td class="g-def">Natural numbers (0,1,2,...), integers (...−1,0,1,...), rationals, reals. Know which set your variable lives in.</td></tr>
-        <tr><td class="g-sym">∴</td><td class="g-term">Therefore</td><td class="g-def">Indicates the conclusion of an argument or proof.</td></tr>
-        <tr><td class="g-sym">∵</td><td class="g-term">Because</td><td class="g-def">Indicates the reason or justification for a statement.</td></tr>
-      </tbody>
-    </table>
+  <!-- VIEW: GLOSSARY -->
+  <div class="view" id="view-glossary">
+    <div class="ref-section">
+      <h2 class="section-title">Notation glossary</h2>
+      <p class="section-sub">Symbols that appear in almost every proof-based course.</p>
+      <table class="gloss-table">
+        <thead><tr><th style="width:90px">Symbol</th><th style="width:160px">Term</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td class="g-sym">∀</td><td class="g-term">For all</td><td class="g-def">"For all x in S, P(x)" — the statement must hold for every element, no exceptions.</td></tr>
+          <tr><td class="g-sym">∃</td><td class="g-term">There exists</td><td class="g-def">"There exists x in S such that P(x)" — you only need one example (a witness).</td></tr>
+          <tr><td class="g-sym">∃!</td><td class="g-term">Unique existence</td><td class="g-def">"There exists a unique x in S such that P(x)" — you must prove both existence and uniqueness.</td></tr>
+          <tr><td class="g-sym">¬ / "not"</td><td class="g-term">Negation</td><td class="g-def">¬P is the opposite of P. Negating "for all" gives "there exists...not". Negating "there exists" gives "for all...not".</td></tr>
+          <tr><td class="g-sym">→</td><td class="g-term">Implies</td><td class="g-def">P → Q: "if P then Q." The hypothesis P is what you're given; the conclusion Q is what you must show.</td></tr>
+          <tr><td class="g-sym">↔ / iff</td><td class="g-term">If and only if</td><td class="g-def">P ↔ Q means P → Q and Q → P. Both directions must be proved separately.</td></tr>
+          <tr><td class="g-sym">⊥</td><td class="g-term">Contradiction</td><td class="g-def">Two statements that cannot both be true — the target in proof by contradiction.</td></tr>
+          <tr><td class="g-sym">□ / QED</td><td class="g-term">End of proof</td><td class="g-def">Signals the proof is complete. QED = quod erat demonstrandum ("what was to be shown").</td></tr>
+          <tr><td class="g-sym">WLOG</td><td class="g-term">Without loss of generality</td><td class="g-def">The argument is symmetric, so proving one case covers all. Must be justified explicitly.</td></tr>
+          <tr><td class="g-sym">ℕ, ℤ, ℚ, ℝ</td><td class="g-term">Number sets</td><td class="g-def">Natural numbers (0,1,2,...), integers (...−1,0,1,...), rationals, reals. Know which set your variable lives in.</td></tr>
+          <tr><td class="g-sym">∴</td><td class="g-term">Therefore</td><td class="g-def">Indicates the conclusion of an argument or proof.</td></tr>
+          <tr><td class="g-sym">∵</td><td class="g-term">Because</td><td class="g-def">Indicates the reason or justification for a statement.</td></tr>
+        </tbody>
+      </table>
     </div>
-
-  </div><!-- /view-reference -->
+  </div>
 
 </div><!-- /page -->
 
